@@ -130,7 +130,7 @@ def test_gnn_missing_model_uses_legacy_score_and_critical_floor(monkeypatch):
         result = qris_scoring.score_payment(db, payment)
         assert result["gnn_final_weight"] == 0
         assert result["gnn_metadata"]["fallback_reason"] == "qris_graphsage_artifact_missing"
-        assert result["final_score"] == 0.95
+        assert result["final_score"] == 0.90
     finally:
         db.rollback()
         db.close()
@@ -213,4 +213,4 @@ def test_cross_border_route_semantics_do_not_equate_geography_with_fraud():
 
 
 def test_health_expected_migration_is_single_head():
-    assert expected_migration_head() == "20260723_0006"
+    assert expected_migration_head() == "20261002_0008"

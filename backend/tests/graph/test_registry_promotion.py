@@ -17,4 +17,4 @@ def test_graph_candidate_is_inactive_until_promoted(tmp_path, monkeypatch):
 
     promoted = model_registry.promote_model_artifact("qris_graph", metrics["version"])
     assert promoted["version"] == metrics["version"]
-    assert model_registry.load_latest_model_by_dataset("qris_graph")["model_kind"] == "test"
+    assert model_registry.load_latest_model_by_dataset("qris_graph")["model"]["model_kind"] == "test"

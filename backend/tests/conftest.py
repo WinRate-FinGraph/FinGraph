@@ -10,6 +10,8 @@ os.environ["NEO4J_MAX_RETRY_SECONDS"] = "0.2"
 os.environ["SEED_GRAPH_SYNC"] = "false"
 os.environ["ML_ARTIFACT_DIR"] = "/tmp/fingraph-qris-test-artifacts"
 os.environ["ML_ARTIFACT_SIGNING_KEY"] = "test-only-artifact-signing-key-0123456789abcdef"
+# Keep integration fixtures deterministic; graph tests enable GNN explicitly.
+os.environ["QRIS_GNN_ENABLED"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
