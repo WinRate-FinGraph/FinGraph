@@ -10,9 +10,9 @@ QRIS/PJP masih berupa simulator; aplikasi belum terhubung ke Bank Indonesia,
 bank, atau PJP nyata.
 
 Untuk memahami proyek sebelum presentasi, mulai dari
-[ringkasan lima menit](docs/quick/SYSTEM_OVERVIEW.md),
-[cheat sheet presentasi](docs/quick/PRESENTATION_CHEAT_SHEET.md), dan
-[audit proposal vs implementasi](docs/deep/PROPOSAL_IMPLEMENTATION_AUDIT.md).
+[arsitektur](docs/ARCHITECTURE.md),
+[scoring](docs/SCORING.md), dan
+[traceability proposal](docs/PROPOSAL_TRACEABILITY.md).
 
 ## Mulai dari sini
 
@@ -230,9 +230,10 @@ perintah itu menghapus volume.
 
 Untuk belajar dan menyiapkan presentasi:
 
-1. [Dokumentasi cepat](docs/quick/README.md)
-2. [Dokumentasi mendalam](docs/deep/README.md)
-3. Proposal asli TrustLens tidak disertakan pada submission publik karena
+1. [Arsitektur](docs/ARCHITECTURE.md)
+2. [Scoring](docs/SCORING.md)
+3. [Alur demo QRIS](docs/QRIS_DEMO_FLOW.md)
+4. Proposal asli TrustLens tidak disertakan pada submission publik karena
    dokumen tersebut memuat data kontak kontributor.
 
 Mulai dari tiga dokumen operasional ini:
