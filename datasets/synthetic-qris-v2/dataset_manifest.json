@@ -1,0 +1,73 @@
+{
+  "dataset_name": "synthetic_qris_graph_v2",
+  "generator": "app.ml.synthetic_qris",
+  "seed": 42,
+  "rows": 50000,
+  "timestamp_start": "2025-01-01 08:01:58",
+  "timestamp_end": "2025-06-29 21:57:13",
+  "fraud_rows": 5000,
+  "fraud_rate": 0.1,
+  "typology_counts": {
+    "legitimate_baseline": 45000,
+    "shared_device_ring": 1437,
+    "merchant_hopping": 977,
+    "velocity_burst": 1254,
+    "amount_anomaly": 838,
+    "cross_border_cluster": 494
+  },
+  "status_counts": {
+    "success": 48502,
+    "failed": 1212,
+    "reversed": 286
+  },
+  "entity_counts": {
+    "payer_id": 33261,
+    "merchant_id": 250,
+    "outlet_id": 500,
+    "qris_id": 500,
+    "device_id": 18777,
+    "pjp_id": 8
+  },
+  "cross_region_rate": 0.1292,
+  "cross_country_rate": 0.02398,
+  "feature_columns": [
+    "payment_id",
+    "timestamp",
+    "payer_id",
+    "merchant_id",
+    "outlet_id",
+    "qris_id",
+    "amount",
+    "payment_status",
+    "label",
+    "device_id",
+    "pjp_id",
+    "source_region",
+    "source_country",
+    "destination_region",
+    "destination_country"
+  ],
+  "ground_truth_columns": [
+    "payment_id",
+    "label",
+    "typology"
+  ],
+  "calibration_profile": "docs/data/synthetic_qris_calibration.json",
+  "calibration_source_rows": 6116,
+  "limitations": [
+    "Retail calibration source is itself simulated and is not bank or QRIS operational data.",
+    "Fraud labels and graph motifs are hand-designed test scenarios, not observed QRIS incidents.",
+    "Metrics are engineering-benchmark results, not production performance.",
+    "Merchant, outlet, device, PJP counts and fraud scenario rate are demo assumptions."
+  ],
+  "files": {
+    "qris_payments.csv": {
+      "sha256": "280a419afb326d2acaa0ea3a5cb4fcc8828fbd4f62b2b46a4d7f5529564187e7",
+      "rows": 50000
+    },
+    "qris_ground_truth.csv": {
+      "sha256": "8188dd270b493ef8c51eb1dcc2b2d23f0af80e8b6ebbfb10bbfd18815a5f82f7",
+      "rows": 50000
+    }
+  }
+}

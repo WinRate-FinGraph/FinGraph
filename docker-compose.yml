@@ -1,0 +1,238 @@
+name: fingraph-qris
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend-environment: &backend-environment
+  APP_ENV: ${APP_ENV:-demo}
+  DEMO_MODE: ${DEMO_MODE:-true}
+  DEBUG: ${DEBUG:-false}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+  ENABLE_DEMO_ENDPOINTS: ${ENABLE_DEMO_ENDPOINTS:-true}
+  PUBLIC_REGISTRATION_ENABLED: ${PUBLIC_REGISTRATION_ENABLED:-true}
+  TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1}
+  BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost}
+  DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-fingraph_qris}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-fingraph_qris}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-fingraph_qris}
+  POSTGRES_USER: ${POSTGRES_USER:-fingraph_qris}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_USER: ${NEO4J_USER:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+  NEO4J_REQUIRED: ${NEO4J_REQUIRED:-false}
+  NEO4J_CONNECTION_TIMEOUT_SECONDS: ${NEO4J_CONNECTION_TIMEOUT_SECONDS:-3}
+  NEO4J_MAX_RETRY_SECONDS: ${NEO4J_MAX_RETRY_SECONDS:-3}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  JWT_ISSUER: ${JWT_ISSUER:-fingraph-qris}
+  JWT_AUDIENCE: ${JWT_AUDIENCE:-fingraph-qris-api}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+  PJP_SIMULATOR_SECRET: ${PJP_SIMULATOR_SECRET:?PJP_SIMULATOR_SECRET is required}
+  PJP_SIMULATOR_NAME: ${PJP_SIMULATOR_NAME:-TrustPay Sandbox}
+  PAYER_PSEUDONYM_KEY: ${PAYER_PSEUDONYM_KEY:?PAYER_PSEUDONYM_KEY is required}
+  QRIS_DEMO_MODE: ${QRIS_DEMO_MODE:-true}
+  QRIS_WEBHOOK_TOLERANCE_SECONDS: ${QRIS_WEBHOOK_TOLERANCE_SECONDS:-300}
+  QRIS_DEFAULT_CURRENCY: ${QRIS_DEFAULT_CURRENCY:-IDR}
+  ML_ARTIFACT_DIR: /app/ml-artifacts
+  ML_ARTIFACT_SIGNING_KEY: ${ML_ARTIFACT_SIGNING_KEY:?ML_ARTIFACT_SIGNING_KEY is required}
+  QRIS_GNN_DATA_DIR: ${QRIS_GNN_DATA_DIR:-/app/data/raw/qris}
+  QRIS_GNN_HOST_DATA_DIR: ${QRIS_GNN_HOST_DATA_DIR:-./backend/data/raw/qris}
+  QRIS_GNN_ENABLED: ${QRIS_GNN_ENABLED:-true}
+  QRIS_GNN_BLEND_WEIGHT: ${QRIS_GNN_BLEND_WEIGHT:-0.50}
+  QRIS_GNN_MAX_NODES: ${QRIS_GNN_MAX_NODES:-500}
+  AUTO_MIGRATE: "false"
+  AUTO_SEED: "false"
+  SEED_GRAPH_SYNC: ${SEED_GRAPH_SYNC:-false}
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: fingraph-qris-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fingraph_qris}
+      POSTGRES_USER: ${POSTGRES_USER:-fingraph_qris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - fingraph-qris-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+    logging: *default-logging
+
+  neo4j:
+    image: ${NEO4J_IMAGE:-neo4j:5.26.28-community}
+    container_name: fingraph-qris-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+      NEO4J_PLUGINS: ${NEO4J_PLUGINS:-[]}
+    volumes:
+      - fingraph-qris-neo4j-data:/data
+      - fingraph-qris-neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "password=$${NEO4J_AUTH#*/}; cypher-shell -u $${NEO4J_AUTH%%/*} -p \"$${password}\" 'RETURN 1' >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+    logging: *default-logging
+
+  migrate:
+    image: ${BACKEND_IMAGE:-fingraph-qris-backend:latest}
+    container_name: fingraph-qris-migrate
+    command: ["/app/scripts/migrate.sh"]
+    environment: *backend-environment
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+    init: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [internal]
+    logging: *default-logging
+
+  seed-demo:
+    image: ${BACKEND_IMAGE:-fingraph-qris-backend:latest}
+    container_name: fingraph-qris-seed-demo
+    command: ["/app/scripts/seed-demo.sh"]
+    environment: *backend-environment
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: "no"
+    init: true
+    profiles: ["demo-seed"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [internal]
+    logging: *default-logging
+
+  backend:
+    image: ${BACKEND_IMAGE:-fingraph-qris-backend:latest}
+    build: { context: ./backend, dockerfile: Dockerfile }
+    container_name: fingraph-qris-backend
+    restart: unless-stopped
+    environment: *backend-environment
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "${UVICORN_WORKERS:-1}", "--proxy-headers", "--forwarded-allow-ips=*"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+    volumes:
+      - fingraph-qris-ml-artifacts:/app/ml-artifacts
+      - ${QRIS_GNN_HOST_DATA_DIR:-./backend/data/raw/qris}:${QRIS_GNN_DATA_DIR:-/app/data/raw/qris}:ro
+    healthcheck:
+      test: ["CMD", "/app/scripts/healthcheck.sh"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    init: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [internal]
+    logging: *default-logging
+
+  gnn-worker:
+    image: ${BACKEND_IMAGE:-fingraph-qris-backend:latest}
+    build: { context: ./backend, dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment: *backend-environment
+    command: ["python", "-m", "app.ml.graph.worker"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+    volumes:
+      - fingraph-qris-ml-artifacts:/app/ml-artifacts
+      - ${QRIS_GNN_HOST_DATA_DIR:-./backend/data/raw/qris}:${QRIS_GNN_DATA_DIR:-/app/data/raw/qris}:ro
+    init: true
+    stop_grace_period: 3m
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      disable: true
+    networks: [internal]
+    logging: *default-logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-fingraph-qris-frontend:latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DEMO_MODE: ${DEMO_MODE:-true}
+    container_name: fingraph-qris-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_DEMO_MODE: ${DEMO_MODE:-true}
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/healthz >/dev/null"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    init: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [internal]
+    logging: *default-logging
+
+  reverse-proxy:
+    image: nginxinc/nginx-unprivileged:1.27.4-alpine
+    container_name: fingraph-qris-reverse-proxy
+    restart: unless-stopped
+    ports:
+      - "${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${PUBLIC_HTTP_PORT:-80}:8080"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      frontend: { condition: service_healthy }
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/proxy-health >/dev/null"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /var/cache/nginx:rw,noexec,nosuid,size=32m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [edge, internal]
+    logging: *default-logging
+
+networks:
+  edge:
+    name: fingraph-qris-edge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+  tunnel-egress:
+    name: fingraph-qris-tunnel-egress
+  internal:
+    name: fingraph-qris-internal
+    internal: true
+
+volumes:
+  fingraph-qris-postgres-data: { name: "${POSTGRES_VOLUME_NAME:-fingraph-qris-postgres-data}" }
+  fingraph-qris-neo4j-data: { name: "${NEO4J_DATA_VOLUME_NAME:-fingraph-qris-neo4j-data}" }
+  fingraph-qris-neo4j-logs: { name: "${NEO4J_LOGS_VOLUME_NAME:-fingraph-qris-neo4j-logs}" }
+  fingraph-qris-ml-artifacts: { name: "${ML_ARTIFACT_VOLUME_NAME:-fingraph-qris-ml-artifacts}" }

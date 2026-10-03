@@ -1,0 +1,66 @@
+export type Payment = {
+  id: string; transaction_reference: string; provider_reference: string; order_id?: string | null; order_reference?: string | null;
+  merchant_name?: string; outlet_name: string; qris_profile_id?: string; payer_pseudonym?: string; amount: number; expected_amount: number | null;
+  currency: string; payment_status: string; risk_level: string; category: string; priority: "rendah" | "sedang" | "tinggi";
+  recommendation: string; recommendation_code?: string; fraud_score: number; confidence_score?: number; analysis_mode?: "ensemble_ai" | "ensemble_gnn" | "rule_graph_fallback";
+  callback_received?: boolean; callback_received_at?: string | null; callback_delay_seconds?: number | null; acquirer_name?: string; qris_type?: string;
+  transaction_time: string; scoring?: Scoring; timeline?: { event: string; at: string; label: string }[]; latest_feedback?: PaymentFeedback | null;
+};
+export type PaymentFeedback = { label: string; merchant_decision: string | null; labelled_by: string | null; notes: string | null; created_at: string };
+export type Scoring = {
+  final_score?: number;
+  confidence_score?: number;
+  confidence_basis?: string;
+  analysis_mode?: "ensemble_ai" | "ensemble_gnn" | "rule_graph_fallback";
+  reasons?: string[];
+  rules?: { code: string; reason: string; severity: string; contribution?: number; recommended_action?: string }[];
+  features?: Record<string, number | string | boolean | null>;
+  models_used?: string[];
+  rule_score?: number;
+  tabular_score?: number | null;
+  adaptive_score?: number | null;
+  graph_score?: number;
+  legacy_ensemble_score?: number;
+  gnn_score?: number | null;
+  gnn_final_weight?: number;
+  gnn_metadata?: { enabled?: boolean; model_version?: string | null; fallback_reason?: string | null };
+  graph_features?: { gnn_blend_weight?: number };
+  ensemble_mode?: string;
+  critical_rule_floor?: number;
+  model_versions?: Record<string, string | null>;
+};
+export type OrderPaymentSummary = { id: string; provider_reference: string; payment_status: string; callback_received: boolean; risk_level: string; recommendation: string; transaction_time: string };
+export type Order = { id: string; order_reference: string; outlet_id: string; outlet_name: string; expected_amount: number; currency: string; description: string; status: string; created_at: string; expires_at?: string | null; payment_count?: number; latest_payment?: OrderPaymentSummary | null };
+export type AlertItem = { id: string; payment_event_id: string | null; severity: string; risk_score: number; reason: string; recommendation: string; status: string; created_at: string; resolved_at?: string | null; payment?: Payment };
+export type ImpactMetrics = { payment_count: number; transaction_value: number; successful_count: number; verified_count: number; review_count: number; held_count: number; verified_percent: number; recommended_hold_value: number };
+export type ImpactDashboard = {
+  period: string; filters: { outlet_id: string | null; priority: string | null; payment_status: string | null; category: string | null };
+  window: { start: string; end: string }; metrics: ImpactMetrics;
+  timeline: { date: string; payment_count: number; transaction_value: number }[];
+  priority_distribution: Record<"rendah" | "sedang" | "tinggi", number>;
+  insights: { top_outlet: string | null; top_outlet_value: number; resolved_alerts: number };
+  available_categories: string[]; items: Payment[]; risk_items: Payment[];
+  total: number; limit: number; offset: number; page: number; total_pages: number;
+};
+export type ActivityImpact = { payment_id: string; provider_reference: string; amount: number; currency: string; status: string; risk_level: string; priority: string; category: string };
+export type ActivityItem = { id: string; actor: string; actor_role: string; action: string; category?: string; entity_type: string; entity_id: string | null; description: string | null; created_at: string; impact: ActivityImpact | null };
+export type ActivityMonitoring = {
+  period: string; role: string | null; window: { start: string; end: string }; active_window_minutes: number;
+  active_users: number; activities_today: number; total_users: number; active_merchants: number;
+  activity_by_role: Record<string, number>; recent_activities: ActivityItem[];
+  top_users: { actor: string; role: string; activity_count: number }[];
+};
+export type PublicTrustSummary = {
+  registered_users: number;
+  active_users: number;
+  active_merchants: number;
+  active_outlets: number;
+  payments_checked: number;
+  verified_payments: number;
+  verification_rate: number;
+  activity_window_minutes: number;
+  updated_at: string;
+  data_scope: string;
+};
+export type MerchantDashboard = { merchant: { name: string; owner_name: string }; demo_mode: boolean; today: { payment_count: number; transaction_value: number; verified_count: number; review_count: number; high_risk_count: number }; impact: ImpactDashboard; active_alerts: number; recent_payments: Payment[]; qris_status: { nmid: string; outlet: string; status: string; last_verified_at?: string | null }[]; security_tip: string };
+export type PageResponse<T> = { items: T[]; total: number; limit: number; page_size: number; offset: number; page: number; total_pages: number };

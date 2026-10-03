@@ -1,0 +1,11 @@
+services:
+  backend:
+    ports: ["${HOST_BACKEND_PORT:-8000}:8000"]
+  frontend:
+    ports: ["${HOST_FRONTEND_PORT:-3000}:3000"]
+  postgres:
+    ports: ["127.0.0.1:${HOST_POSTGRES_PORT:-5432}:5432"]
+  neo4j:
+    ports:
+      - "127.0.0.1:${HOST_NEO4J_HTTP_PORT:-7474}:7474"
+      - "127.0.0.1:${HOST_NEO4J_BOLT_PORT:-7687}:7687"

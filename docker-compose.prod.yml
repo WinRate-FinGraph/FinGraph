@@ -1,0 +1,67 @@
+services:
+  reverse-proxy:
+    # Cloudflare is the only production ingress; keep Nginx on the Docker edge network.
+    ports: !reset []
+  backend:
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      QRIS_DEMO_MODE: ${QRIS_DEMO_MODE:-false}
+      ENABLE_DEMO_ENDPOINTS: ${ENABLE_DEMO_ENDPOINTS:-false}
+      PUBLIC_REGISTRATION_ENABLED: ${PUBLIC_REGISTRATION_ENABLED:-false}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      AUTO_SEED: "false"
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 4G }
+        reservations: { memory: 1G }
+  gnn-worker:
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 4G }
+        reservations: { memory: 1G }
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_DEMO_MODE: "true"
+    environment:
+      NEXT_PUBLIC_DEMO_MODE: "true"
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+        reservations: { memory: 256M }
+  postgres:
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 2G }
+        reservations: { memory: 512M }
+  neo4j:
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 3G }
+        reservations: { memory: 1G }
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: fingraph-qris-cloudflared
+    restart: unless-stopped
+    command: ["tunnel", "--loglevel", "info", "--metrics", "0.0.0.0:2000", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    depends_on:
+      reverse-proxy: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks:
+      edge:
+        gw_priority: 0
+      tunnel-egress:
+        gw_priority: 100

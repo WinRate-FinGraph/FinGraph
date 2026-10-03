@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+!.env.example
+*:Zone.Identifier
+Zone.Identifier
+node_modules
+.next
+.visual-qa
+playwright-report
+test-results
+coverage
+dist
+build
+*.log
+npm-debug.log*
+.DS_Store

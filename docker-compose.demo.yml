@@ -1,0 +1,15 @@
+services:
+  backend:
+    environment:
+      APP_ENV: demo
+      DEMO_MODE: "true"
+      QRIS_DEMO_MODE: "true"
+      ENABLE_DEMO_ENDPOINTS: "true"
+      PUBLIC_REGISTRATION_ENABLED: "true"
+      ENABLE_API_DOCS: "true"
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_DEMO_MODE: "true"
+    environment:
+      NEXT_PUBLIC_DEMO_MODE: "true"
